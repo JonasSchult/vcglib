@@ -1,3 +1,5 @@
+*This is our fork of VCGlib for generating pooling trace maps for vertex clustering and quadric error metrics.*
+
 The **_Visualization and Computer Graphics Library_** (VCGlib for short) is a open source, portable, C++, templated, no dependency, library for manipulation, processing, cleaning, simplifying triangle meshes.
 
 The library, composed by more than 100k lines of code, is released under the GPL license, and it is the base of most of the software tools of the [Visual Computing Lab](http://vcg.isti.cnr.it) of the Italian National Research Council Institute ISTI , like MeshLab, metro and many others.
