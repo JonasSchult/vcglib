@@ -22,8 +22,7 @@
 ****************************************************************************/
 #ifndef __VCG_TETRA_TRI_COLLAPSE
 #define __VCG_TETRA_TRI_COLLAPSE
-
-
+#include <map>
 #include<vcg/simplex/face/pos.h>
 #include<vcg/simplex/face/topology.h>
 
@@ -233,38 +232,46 @@ public:
   // hint to do a 'collapse onto a vertex simply pass p as the position of the surviving vertex
   static int Do(TriMeshType &m, VertexPair & c, const Point3<ScalarType> &p)
     {
-    EdgeSet es;
-    FindSets(c,es);
-        typename VFIVec::iterator i;
-    int n_face_del =0 ;
+        // obtain another handle of a previously attribute
+        typename TRI_MESH_TYPE::template PerVertexAttributeHandle<int> ret_hv = Allocator<TriMeshType>::template FindPerVertexAttribute<int>(m,"id");
+        typename TRI_MESH_TYPE::template PerVertexAttributeHandle<std::set<VertexType*>> vert_hv = Allocator<TriMeshType>::template FindPerVertexAttribute<std::set<VertexType*>>(m,"collapse");
 
-    for(i=es.AV01().begin();i!=es.AV01().end();++i)
-        {
-            FaceType  & f = *((*i).f);
-            assert(f.V((*i).z) == c.V(0));
-            vcg::face::VFDetach(f,((*i).z+1)%3);
-            vcg::face::VFDetach(f,((*i).z+2)%3);
-            Allocator<TriMeshType>::DeleteFace(m,f);
-      n_face_del++;
-    }
-
-        //set Vertex Face topology
-    for(i=es.AV0().begin();i!=es.AV0().end();++i)
-        {
-            (*i).f->V((*i).z) = c.V(1);									 // In tutte le facce incidenti in v0, si sostituisce v0 con v1
-            (*i).f->VFp((*i).z) = (*i).f->V((*i).z)->VFp(); // e appendo la lista di facce incidenti in v1 a questa faccia
-            (*i).f->VFi((*i).z) = (*i).f->V((*i).z)->VFi();
-            (*i).f->V((*i).z)->VFp() = (*i).f;
-            (*i).f->V((*i).z)->VFi() = (*i).z;
+      for(auto id : vert_hv[*(c.V(0))]) {
+          vert_hv[*(c.V(1))].insert(id);
         }
 
-        Allocator<TriMeshType>::DeleteVertex(m,*(c.V(0)));
-        c.V(1)->P()=p;
-        return n_face_del;
-    }
+      EdgeSet es;
+      FindSets(c,es);
+      typename VFIVec::iterator i;
+      int n_face_del =0 ;
 
-};
+      for(i=es.AV01().begin();i!=es.AV01().end();++i)
+      {
+          FaceType  & f = *((*i).f);
+          assert(f.V((*i).z) == c.V(0));
+          vcg::face::VFDetach(f,((*i).z+1)%3);
+          vcg::face::VFDetach(f,((*i).z+2)%3);
+          Allocator<TriMeshType>::DeleteFace(m,f);
+          n_face_del++;
+      }
 
-}
+      //set Vertex Face topology
+      for(i=es.AV0().begin();i!=es.AV0().end();++i)
+      {
+          (*i).f->V((*i).z) = c.V(1);									 // In tutte le facce incidenti in v0, si sostituisce v0 con v1
+          (*i).f->VFp((*i).z) = (*i).f->V((*i).z)->VFp(); // e appendo la lista di facce incidenti in v1 a questa faccia
+          (*i).f->VFi((*i).z) = (*i).f->V((*i).z)->VFi();
+          (*i).f->V((*i).z)->VFp() = (*i).f;
+          (*i).f->V((*i).z)->VFi() = (*i).z;
+      }
+
+      Allocator<TriMeshType>::DeleteVertex(m,*(c.V(0)));
+      c.V(1)->P()=p;
+      return n_face_del;
+  }
+
+  };
+
+  }
 }
 #endif

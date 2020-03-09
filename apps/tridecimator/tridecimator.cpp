@@ -8,6 +8,11 @@
 // local optimization
 #include <vcg/complex/algorithms/local_optimization.h>
 #include <vcg/complex/algorithms/local_optimization/tri_edge_collapse_quadric.h>
+#include <map>
+#include <iostream>	
+#include <iomanip>
+#include <cmath>
+#include <limits>
 
 using namespace vcg;
 using namespace tri;
@@ -104,8 +109,7 @@ int main(int argc ,char**argv)
   if(argc<4) Usage();
 
   MyMesh mesh;
-  
-  int FinalSize=atoi(argv[3]);
+
   int err=vcg::tri::io::Importer<MyMesh>::Open(mesh,argv[1]);
   if(err)
   {
@@ -158,13 +162,29 @@ int main(int argc ,char**argv)
   if(CleaningFlag){
       int dup = tri::Clean<MyMesh>::RemoveDuplicateVertex(mesh);
       int unref =  tri::Clean<MyMesh>::RemoveUnreferencedVertex(mesh);
-      printf("Removed %i duplicate and %i unreferenced vertices from mesh \n",dup,unref);
+      printf("Removed %i duplicate and %i unreferenced vertices from mesh and face %i and edge %i and deg vertex %i and deg face %i\n",dup,unref, dup_face, dup_edge, deg_vertex, deg_face);
+      vcg::tri::Allocator<MyMesh>::CompactFaceVector(mesh);
+      vcg::tri::Allocator<MyMesh>::CompactVertexVector(mesh);
   }
 
 
   printf("reducing it to %i\n",FinalSize);
 
   vcg::tri::UpdateBounding<MyMesh>::Box(mesh);
+
+  vcg::tri::Allocator<MyMesh>::GetPerVertexAttribute<int>(mesh,std::string("id"));
+  vcg::tri::Allocator<MyMesh>::GetPerVertexAttribute<std::set<MyVertex*>>(mesh,std::string("collapse"));
+
+  // obtain another handle of a previously attribute
+  MyMesh::PerVertexAttributeHandle<int> ret_hv = vcg::tri::Allocator<MyMesh>:: FindPerVertexAttribute<int>(mesh,"id");
+  MyMesh::PerVertexAttributeHandle<std::set<MyVertex*>> vert_hv = vcg::tri::Allocator<MyMesh>:: FindPerVertexAttribute<std::set<MyVertex*>>(mesh,"collapse");
+
+  MyMesh::VertexIterator vi; int i;
+  for(i=0, vi   = mesh.vert.begin(); vi != mesh.vert.end(); ++vi,++i){
+      ret_hv[vi]  = i;  // [] operator takes a iterator
+      vert_hv[vi] = std::set<MyVertex*>();
+      vert_hv[vi].insert(&*vi);
+  }
 
   // decimator initialization
   vcg::LocalOptimization<MyMesh> DeciSession(mesh,&qparams);
@@ -185,7 +205,41 @@ int main(int argc ,char**argv)
   printf("mesh  %d %d Error %g \n",mesh.vn,mesh.fn,DeciSession.currMetric);
   printf("\nCompleted in (%5.3f+%5.3f) sec\n",float(t2-t1)/CLOCKS_PER_SEC,float(t3-t2)/CLOCKS_PER_SEC);
 
-  vcg::tri::io::ExporterPLY<MyMesh>::Save(mesh,argv[2]);
-    return 0;
+  if(CleaningFlag){
+    int dup = tri::Clean<MyMesh>::RemoveDuplicateVertex(mesh);
+    int dup_face = tri::Clean<MyMesh>::RemoveDuplicateFace(mesh);
+    int dup_edge = tri::Clean<MyMesh>::RemoveDuplicateEdge(mesh);
+    int deg_vertex = tri::Clean<MyMesh>::RemoveDegenerateVertex(mesh);
+    int deg_face = tri::Clean<MyMesh>::RemoveDegenerateFace(mesh);
+    int unref =  tri::Clean<MyMesh>::RemoveUnreferencedVertex(mesh);
+    printf("Removed %i duplicate and %i unreferenced vertices from mesh and face %i and edge %i and deg vertex %i and deg face %i\n",dup,unref, dup_face, dup_edge, deg_vertex, deg_face);
+  }
 
+  vcg::tri::io::ExporterPLY<MyMesh>::Save(mesh,argv[2]);
+  
+  ofstream trace_file;
+
+  string output_name(argv[2]);
+
+  int pos = output_name.rfind('.');
+  std::string newExt = "csv";
+  output_name.replace(pos+1, newExt.length(), newExt);
+
+  trace_file.open(output_name);
+
+  for(i=0, vi   = mesh.vert.begin(); vi != mesh.vert.end(); ++vi){
+    if(!vi->IsD()) {
+      trace_file << vi->P()[0] << ";" << vi->P()[1] << ";" << vi->P()[2];
+
+      for (auto const &node : vert_hv[vi]) {
+        trace_file << ";" << node->P()[0] << ";" << node->P()[1] << ";" << node->P()[2];
+      }
+
+      trace_file << "\n";
+    }
+  }
+
+  trace_file.close();
+
+  return 0;
 }

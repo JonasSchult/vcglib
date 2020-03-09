@@ -88,6 +88,13 @@ int  main(int argc, char **argv)
     exit(0);
   }
 
+  int dup = vcg::tri::Clean<MyMesh>::RemoveDuplicateVertex(m);
+  int dup_face = vcg::tri::Clean<MyMesh>::RemoveDuplicateFace(m);
+  int dup_edge = vcg::tri::Clean<MyMesh>::RemoveDuplicateEdge(m);
+  int deg_vertex = vcg::tri::Clean<MyMesh>::RemoveDegenerateVertex(m);
+  int deg_face = vcg::tri::Clean<MyMesh>::RemoveDegenerateFace(m);
+  int unref =  vcg::tri::Clean<MyMesh>::RemoveUnreferencedVertex(m);
+
   vcg::tri::UpdateBounding<MyMesh>::Box(m);
   vcg::tri::UpdateNormal<MyMesh>::PerFace(m);
   printf("Input mesh  vn:%i fn:%i\n",m.VN(),m.FN());

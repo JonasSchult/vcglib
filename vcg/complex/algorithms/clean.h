@@ -37,6 +37,7 @@
 #include <vcg/complex/algorithms/update/normal.h>
 #include <vcg/complex/algorithms/update/topology.h>
 #include <vcg/space/triangle3.h>
+#include <map>
 
 namespace vcg {
 namespace tri{
@@ -322,6 +323,7 @@ public:
             */
   static int RemoveUnreferencedVertex( MeshType& m, bool DeleteVertexFlag=true)   // V1.0
   {
+    typename MeshType::template PerVertexAttributeHandle<int> ret_hv = Allocator<MeshType>::template FindPerVertexAttribute<int>(m,"id");
     FaceIterator fi;
     EdgeIterator ei;
     VertexIterator vi;
@@ -347,7 +349,10 @@ public:
     for(vi=m.vert.begin();vi!=m.vert.end();++vi)
       if( (!(*vi).IsD()) && (!(*vi).IsUserBit(referredBit)))
       {
-        if(DeleteVertexFlag) Allocator<MeshType>::DeleteVertex(m,*vi);
+        if(DeleteVertexFlag) {
+          typename std::set<VertexType*>::iterator vertex_iter;
+          Allocator<MeshType>::DeleteVertex(m,*vi);
+        }
         ++deleted;
       }
     VertexType::DeleteBitFlag(referredBit);

@@ -72,7 +72,7 @@ public:
   inline bool IsQualityEnabled() const { return TT::VertexType::HasQuality();}
 
   typedef vcg::Color4b ColorType;
-  ColorType &C()       { static ColorType dumcolor(vcg::Color4b::White); assert(0); return dumcolor; }
+  ColorType &C()       { static ColorType dumcolor(vcg::Color4b::White); /*assert(0)*/; return dumcolor; }
   ColorType cC() const { static ColorType dumcolor(vcg::Color4b::White);  assert(0); return dumcolor; }
   static bool HasColor()   { return false; }
   inline bool IsColorEnabled() const { return TT::VertexType::HasColor();}
