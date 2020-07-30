@@ -9,7 +9,7 @@
 #include <vcg/complex/algorithms/local_optimization.h>
 #include <vcg/complex/algorithms/local_optimization/tri_edge_collapse_quadric.h>
 #include <map>
-#include <iostream>	
+#include <iostream>
 #include <iomanip>
 #include <cmath>
 #include <limits>
@@ -109,7 +109,6 @@ int main(int argc ,char**argv)
   if(argc<4) Usage();
 
   MyMesh mesh;
-
   int err=vcg::tri::io::Importer<MyMesh>::Open(mesh,argv[1]);
   if(err)
   {
@@ -117,13 +116,14 @@ int main(int argc ,char**argv)
     exit(-1);
   }
   printf("mesh loaded %d %d \n",mesh.vn,mesh.fn);
+  int FinalSize=(int)(atoi(argv[3]) / 100. * mesh.fn);
 
   TriEdgeCollapseQuadricParameter qparams;
   qparams.QualityThr  =.3;
   float TargetError=std::numeric_limits<float>::max();
   bool CleaningFlag =false;
-     // parse command line.
-    for(int i=4; i < argc;)
+  // parse command line.
+  for(int i=4; i < argc;)
     {
       if(argv[i][0]=='-')
         switch(argv[i][1])
@@ -157,10 +157,12 @@ int main(int argc ,char**argv)
       i++;
     }
 
-
-
   if(CleaningFlag){
       int dup = tri::Clean<MyMesh>::RemoveDuplicateVertex(mesh);
+      int dup_face = tri::Clean<MyMesh>::RemoveDuplicateFace(mesh);
+      int dup_edge = tri::Clean<MyMesh>::RemoveDuplicateEdge(mesh);
+      int deg_vertex = tri::Clean<MyMesh>::RemoveDegenerateVertex(mesh);
+      int deg_face = tri::Clean<MyMesh>::RemoveDegenerateFace(mesh);
       int unref =  tri::Clean<MyMesh>::RemoveUnreferencedVertex(mesh);
       printf("Removed %i duplicate and %i unreferenced vertices from mesh and face %i and edge %i and deg vertex %i and deg face %i\n",dup,unref, dup_face, dup_edge, deg_vertex, deg_face);
       vcg::tri::Allocator<MyMesh>::CompactFaceVector(mesh);
@@ -172,19 +174,19 @@ int main(int argc ,char**argv)
 
   vcg::tri::UpdateBounding<MyMesh>::Box(mesh);
 
-  vcg::tri::Allocator<MyMesh>::GetPerVertexAttribute<int>(mesh,std::string("id"));
-  vcg::tri::Allocator<MyMesh>::GetPerVertexAttribute<std::set<MyVertex*>>(mesh,std::string("collapse"));
+    vcg::tri::Allocator<MyMesh>::GetPerVertexAttribute<int>(mesh,std::string("id"));
+    vcg::tri::Allocator<MyMesh>::GetPerVertexAttribute<std::set<MyVertex*>>(mesh,std::string("collapse"));
 
-  // obtain another handle of a previously attribute
-  MyMesh::PerVertexAttributeHandle<int> ret_hv = vcg::tri::Allocator<MyMesh>:: FindPerVertexAttribute<int>(mesh,"id");
-  MyMesh::PerVertexAttributeHandle<std::set<MyVertex*>> vert_hv = vcg::tri::Allocator<MyMesh>:: FindPerVertexAttribute<std::set<MyVertex*>>(mesh,"collapse");
+    // obtain another handle of a previously attribute
+    MyMesh::PerVertexAttributeHandle<int> ret_hv = vcg::tri::Allocator<MyMesh>:: FindPerVertexAttribute<int>(mesh,"id");
+    MyMesh::PerVertexAttributeHandle<std::set<MyVertex*>> vert_hv = vcg::tri::Allocator<MyMesh>:: FindPerVertexAttribute<std::set<MyVertex*>>(mesh,"collapse");
 
-  MyMesh::VertexIterator vi; int i;
-  for(i=0, vi   = mesh.vert.begin(); vi != mesh.vert.end(); ++vi,++i){
-      ret_hv[vi]  = i;  // [] operator takes a iterator
-      vert_hv[vi] = std::set<MyVertex*>();
-      vert_hv[vi].insert(&*vi);
-  }
+    MyMesh::VertexIterator vi; int i;
+    for(i=0, vi   = mesh.vert.begin(); vi != mesh.vert.end(); ++vi,++i){
+        ret_hv[vi]  = i;  // [] operator takes a iterator
+        vert_hv[vi] = std::set<MyVertex*>();
+        vert_hv[vi].insert(&*vi);
+    }
 
   // decimator initialization
   vcg::LocalOptimization<MyMesh> DeciSession(mesh,&qparams);
@@ -205,41 +207,40 @@ int main(int argc ,char**argv)
   printf("mesh  %d %d Error %g \n",mesh.vn,mesh.fn,DeciSession.currMetric);
   printf("\nCompleted in (%5.3f+%5.3f) sec\n",float(t2-t1)/CLOCKS_PER_SEC,float(t3-t2)/CLOCKS_PER_SEC);
 
-  if(CleaningFlag){
-    int dup = tri::Clean<MyMesh>::RemoveDuplicateVertex(mesh);
-    int dup_face = tri::Clean<MyMesh>::RemoveDuplicateFace(mesh);
-    int dup_edge = tri::Clean<MyMesh>::RemoveDuplicateEdge(mesh);
-    int deg_vertex = tri::Clean<MyMesh>::RemoveDegenerateVertex(mesh);
-    int deg_face = tri::Clean<MyMesh>::RemoveDegenerateFace(mesh);
-    int unref =  tri::Clean<MyMesh>::RemoveUnreferencedVertex(mesh);
-    printf("Removed %i duplicate and %i unreferenced vertices from mesh and face %i and edge %i and deg vertex %i and deg face %i\n",dup,unref, dup_face, dup_edge, deg_vertex, deg_face);
-  }
+    if(CleaningFlag){
+        int dup = tri::Clean<MyMesh>::RemoveDuplicateVertex(mesh);
+        int dup_face = tri::Clean<MyMesh>::RemoveDuplicateFace(mesh);
+        int dup_edge = tri::Clean<MyMesh>::RemoveDuplicateEdge(mesh);
+        int deg_vertex = tri::Clean<MyMesh>::RemoveDegenerateVertex(mesh);
+        int deg_face = tri::Clean<MyMesh>::RemoveDegenerateFace(mesh);
+        int unref =  tri::Clean<MyMesh>::RemoveUnreferencedVertex(mesh);
+        printf("Removed %i duplicate and %i unreferenced vertices from mesh and face %i and edge %i and deg vertex %i and deg face %i\n",dup,unref, dup_face, dup_edge, deg_vertex, deg_face);
+    }
 
   vcg::tri::io::ExporterPLY<MyMesh>::Save(mesh,argv[2]);
-  
   ofstream trace_file;
 
-  string output_name(argv[2]);
+    string output_name(argv[2]);
 
-  int pos = output_name.rfind('.');
-  std::string newExt = "csv";
-  output_name.replace(pos+1, newExt.length(), newExt);
+    int pos = output_name.rfind('.');
+    std::string newExt = "csv";
+    output_name.replace(pos+1, newExt.length(), newExt);
 
-  trace_file.open(output_name);
+    trace_file.open(output_name);
 
-  for(i=0, vi   = mesh.vert.begin(); vi != mesh.vert.end(); ++vi){
-    if(!vi->IsD()) {
-      trace_file << vi->P()[0] << ";" << vi->P()[1] << ";" << vi->P()[2];
+    for(i=0, vi   = mesh.vert.begin(); vi != mesh.vert.end(); ++vi){
+        if(!vi->IsD()) {
+            trace_file << vi->P()[0] << ";" << vi->P()[1] << ";" << vi->P()[2];
 
-      for (auto const &node : vert_hv[vi]) {
-        trace_file << ";" << node->P()[0] << ";" << node->P()[1] << ";" << node->P()[2];
-      }
+            for (auto const &node : vert_hv[vi]) {
+                trace_file << ";" << node->P()[0] << ";" << node->P()[1] << ";" << node->P()[2];
+            }
 
-      trace_file << "\n";
+            trace_file << "\n";
+        }
     }
-  }
 
-  trace_file.close();
+    trace_file.close();
 
-  return 0;
+    return 0;
 }
